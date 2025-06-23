@@ -1,0 +1,87 @@
+//+------------------------------------------------------------------+
+//|                                                       DayRVI.mq4 |
+//|                                 Copyright 2010-2015, Excstrategy |
+//|                                        http://www.ExcStrategy.ru |
+//+------------------------------------------------------------------+
+#property copyright "ExcStrategy"
+#property link      "http://www.ExcStrategy.ru"
+#property version   "1.1"
+#property description "RVI"
+#property strict
+//+------------------------------------------------------------------+
+#property indicator_separate_window
+#property indicator_buffers 2
+#property indicator_color1 Blue
+#property indicator_width1 1  
+#property indicator_color2 Red
+#property indicator_width2 1  
+#property indicator_level1 0.0
+#property indicator_levelcolor clrSilver
+#property indicator_levelstyle STYLE_DOT  
+//----
+extern int DaysForCalculation=2;
+//---- buffers
+double Buffer1[];
+double Buffer2[];
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+int init()
+  {
+   IndicatorBuffers(2);
+//---- indicator lines
+   SetIndexStyle(0,DRAW_LINE);
+   SetIndexBuffer(0,Buffer1);
+   SetIndexStyle(1,DRAW_LINE);
+   SetIndexBuffer(1,Buffer2);
+//---- 
+   SetIndexLabel(0,"RVI");
+   SetIndexLabel(0,"Signal");
+//---
+   DaysForCalculation=DaysForCalculation+1;
+//----
+   return(0);
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+int start()
+  {
+   if(Period()>1400)
+     {
+      Alert("Error! Period can not be greater than D1");
+      return(0);
+     }
+//----
+   int counted_bars=IndicatorCounted();
+   int barsday;
+   bool rangeday;
+   datetime Time1=Time[0],Time2;
+//----
+   if(counted_bars>0) counted_bars--;
+   int limit=Bars-counted_bars;
+//----
+   for(int i=0; i<limit; i++)
+     {
+      //----
+      rangeday= false;
+      barsday = 0;
+      //----
+      Time2=Time[i]+(1440*60*DaysForCalculation);
+      if(Time1<Time2)
+         if(i<Bars-MathRound(1500/Period()))
+            for(int a=i; a<i+1441; a++)
+              {
+               //----
+               barsday++;
+               //----
+               if(TimeDayOfYear(Time[a])!=TimeDayOfYear(Time[a+1])) a=i+1442;
+              }
+      //----
+      Buffer1[i] = iRVI(NULL, 0, barsday, 0, i);
+      Buffer2[i] = iRVI(NULL, 0, barsday, 1, i);
+     }
+//----
+   return(0);
+  }
+//+------------------------------------------------------------------+

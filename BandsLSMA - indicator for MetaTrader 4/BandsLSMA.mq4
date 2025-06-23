@@ -1,0 +1,116 @@
+//+------------------------------------------------------------------+
+//|                                                    BandsLSMA.mq4 |
+//|                      Copyright © 2005, MetaQuotes Software Corp. |
+//|                                       http://www.metaquotes.net/ |
+//+------------------------------------------------------------------+
+#property copyright "Copyright © 2005, MetaQuotes Software Corp."
+#property link      "http://www.metaquotes.net/"
+
+#property indicator_chart_window
+#property indicator_buffers 3
+#property indicator_color1 DodgerBlue
+#property indicator_color2 Blue
+#property indicator_color3 Blue
+//---- indicator parameters
+extern int    BandsPeriod = 20;
+extern int    BandsShift = 0;
+extern double BandsDeviations = 2.0;
+//---- buffers
+double MovingBuffer[];
+double UpperBuffer[];
+double LowerBuffer[];
+//+------------------------------------------------------------------+
+//| Custom indicator initialization function                         |
+//+------------------------------------------------------------------+
+int init()
+  {
+//---- indicators
+   SetIndexStyle(0, DRAW_LINE);
+   SetIndexBuffer(0, MovingBuffer);
+   SetIndexStyle(1, DRAW_LINE);
+   SetIndexBuffer(1, UpperBuffer);
+   SetIndexStyle(2, DRAW_LINE);
+   SetIndexBuffer(2, LowerBuffer);
+//----
+   SetIndexDrawBegin(0, BandsPeriod+BandsShift);
+   SetIndexDrawBegin(1, BandsPeriod+BandsShift);
+   SetIndexDrawBegin(2, BandsPeriod+BandsShift);
+//----
+   return(0);
+  }
+//+------------------------------------------------------------------------+
+//| LSMA - Least Squares Moving Average function calculation               |
+//| LSMA_In_Color Indicator plots the end of the linear regression line    |
+//+------------------------------------------------------------------------+
+double LSMA(int Rperiod, int shift)
+  {
+   int i;
+   double sum;
+   int length;
+   double lengthvar;
+   double tmp;
+   double wt;
+//----
+   length = Rperiod;
+   sum = 0;
+   for(i = length; i >= 1  ; i--)
+     {
+       lengthvar = length + 1;
+       lengthvar /= 3;
+       tmp = 0;
+       tmp = ( i - lengthvar)*Close[length-i+shift];
+       sum += tmp;
+     }
+    wt = sum*6 / (length*(length + 1));
+//----
+    return(wt);
+  }
+//+------------------------------------------------------------------+
+//| Bollinger Bands                                                  |
+//+------------------------------------------------------------------+
+int start()
+  {
+   int    i, k, counted_bars = IndicatorCounted();
+   double deviation;
+   double sum, oldval, newres;
+//----
+   if(Bars <= BandsPeriod) 
+       return(0);
+//---- initial zero
+   if(counted_bars < 1)
+       for(i = 1; i <= BandsPeriod; i++)
+         {
+           MovingBuffer[Bars-i] = EMPTY_VALUE;
+           UpperBuffer[Bars-i] = EMPTY_VALUE;
+           LowerBuffer[Bars-i] = EMPTY_VALUE;
+         }
+//----
+   int limit = Bars - counted_bars;
+   if(counted_bars > 0) 
+       limit++;
+   for(i = 0; i < limit; i++)
+       MovingBuffer[i] = LSMA(BandsPeriod, i);
+//----
+   i = Bars - BandsPeriod + 1;
+   if(counted_bars > BandsPeriod - 1) 
+       i = Bars - counted_bars - 1;
+   while(i >= 0)
+     {
+       sum = 0.0;
+       k = i + BandsPeriod - 1;
+       oldval = MovingBuffer[i];
+       while(k >= i)
+         {
+           newres = Close[k] - oldval;
+           sum += newres*newres;
+           k--;
+         }
+       deviation = BandsDeviations*MathSqrt(sum / BandsPeriod);
+       UpperBuffer[i] = oldval + deviation;
+       LowerBuffer[i] = oldval - deviation;
+       i--;
+     }
+//----
+   return(0);
+  }
+//+------------------------------------------------------------------+
